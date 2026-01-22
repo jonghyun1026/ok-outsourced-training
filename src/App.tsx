@@ -257,41 +257,41 @@ function App() {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* 헤더 */}
       <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-50 shadow-sm">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-3">
+        <div className="mx-auto max-w-7xl px-3 sm:px-4 lg:px-8">
+          <div className="flex items-center justify-between h-14 sm:h-16">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
               <img 
                 src={darkMode ? "/ok-logo-dark.png" : "/ok-logo.png"} 
                 alt="OK금융그룹" 
-                className="h-7 sm:h-8 w-auto" 
+                className="h-5 sm:h-7 md:h-8 w-auto flex-shrink-0" 
               />
-              <div className="hidden sm:block w-px h-8 bg-gray-300 dark:bg-gray-600" />
-              <h1 className="text-xl sm:text-2xl font-bold text-[#5A4E4D] dark:text-gray-100 mt-0.5">
+              <div className="hidden sm:block w-px h-6 sm:h-8 bg-gray-300 dark:bg-gray-600 flex-shrink-0" />
+              <h1 className="text-sm sm:text-lg md:text-xl lg:text-2xl font-bold text-[#5A4E4D] dark:text-gray-100 truncate">
                 2026년 위탁교육 과정 리스트
               </h1>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
               {/* 다크모드 토글 버튼 */}
               <button
                 onClick={toggleDarkMode}
-                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                className="p-1.5 sm:p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                 aria-label="다크모드 토글"
               >
                 {darkMode ? (
                   // 라이트모드 아이콘 (해)
-                  <svg className="w-5 h-5 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
+                  <svg className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clipRule="evenodd" />
                   </svg>
                 ) : (
                   // 다크모드 아이콘 (달)
-                  <svg className="w-5 h-5 text-gray-700 dark:text-gray-300" fill="currentColor" viewBox="0 0 20 20">
+                  <svg className="w-4 h-4 sm:w-5 sm:h-5 text-gray-700 dark:text-gray-300" fill="currentColor" viewBox="0 0 20 20">
                     <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
                   </svg>
                 )}
               </button>
               
               {totalCount !== null && (
-                <div className="text-sm text-gray-600 dark:text-gray-300">
+                <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 whitespace-nowrap">
                   <span className="font-semibold text-[#F26522] dark:text-[#F26522]">{totalCount.toLocaleString()}</span>건
                 </div>
               )}
@@ -594,8 +594,8 @@ function App() {
             <h3 className="text-sm font-semibold text-red-900 dark:text-red-200">데이터 로드 오류</h3>
             <p className="mt-1 text-sm text-red-700 dark:text-red-300">
               {'message' in error ? error.message : String(error)}
-            </p>
-          </div>
+        </p>
+      </div>
         )}
 
         {/* 데이터 테이블 */}

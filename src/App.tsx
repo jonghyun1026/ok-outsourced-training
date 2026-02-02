@@ -141,52 +141,60 @@ function App() {
 
     async function loadMetadata() {
       try {
-        const { data, error: fetchError } = await supabase!
-          .from('outsourced_training')
-          .select('대분류, 카테고리, 기관명')
-          .limit(10000)
+        // 대분류, 카테고리, 기관명을 개별적으로 DISTINCT 쿼리
+        const [majorCategoriesResult, categoriesResult, institutionsResult] = await Promise.all([
+          // 대분류 목록
+          supabase!
+            .from('outsourced_training')
+            .select('대분류')
+            .not('대분류', 'is', null),
+          
+          // 대분류-카테고리 조합
+          supabase!
+            .from('outsourced_training')
+            .select('대분류, 카테고리')
+            .not('대분류', 'is', null)
+            .not('카테고리', 'is', null),
+          
+          // 기관명 목록
+          supabase!
+            .from('outsourced_training')
+            .select('기관명')
+            .not('기관명', 'is', null),
+        ])
 
         if (cancelled) return
-        
-        if (fetchError) return
 
-        if (data && data.length > 0) {
-          // 대분류 목록
-          const uniqueMajorCategories = Array.from(
-            new Set(
-              data
-                .map((x: any) => x.대분류)
-                .filter((x): x is string => Boolean(x && String(x).trim()))
-            )
-          ).sort((a, b) => a.localeCompare(b, 'ko'))
-
-          // 중분류 목록 (대분류와 함께)
-          const middleCategoriesWithMajor = data
-            .filter((x: any) => x.대분류 && x.카테고리)
-            .map((x: any) => ({
-              대분류: x.대분류,
-              카테고리: x.카테고리,
-            }))
-          
-          // 중복 제거 (대분류-카테고리 조합 기준)
-          const uniqueMiddleCategories = Array.from(
-            new Map(
-              middleCategoriesWithMajor.map((x) => [`${x.대분류}-${x.카테고리}`, x])
-            ).values()
+        // 대분류 중복 제거 및 정렬
+        const uniqueMajorCategories = Array.from(
+          new Set(
+            (majorCategoriesResult.data || [])
+              .map((x: any) => x.대분류)
+              .filter((x): x is string => Boolean(x && String(x).trim()))
           )
+        ).sort((a, b) => a.localeCompare(b, 'ko'))
 
-          const uniqueInstitutions = Array.from(
-            new Set(
-              data
-                .map((x: any) => x.기관명)
-                .filter((x): x is string => Boolean(x && String(x).trim()))
-            )
-          ).sort((a, b) => a.localeCompare(b, 'ko'))
+        // 중분류 중복 제거 (대분류-카테고리 조합 기준)
+        const uniqueMiddleCategories = Array.from(
+          new Map(
+            (categoriesResult.data || [])
+              .filter((x: any) => x.대분류 && x.카테고리)
+              .map((x: any) => [`${x.대분류}-${x.카테고리}`, { 대분류: x.대분류, 카테고리: x.카테고리 }])
+          ).values()
+        )
 
-          setMajorCategories(uniqueMajorCategories)
-          setAllMiddleCategories(uniqueMiddleCategories)
-          setInstitutions(uniqueInstitutions)
-        }
+        // 기관명 중복 제거 및 정렬
+        const uniqueInstitutions = Array.from(
+          new Set(
+            (institutionsResult.data || [])
+              .map((x: any) => x.기관명)
+              .filter((x): x is string => Boolean(x && String(x).trim()))
+          )
+        ).sort((a, b) => a.localeCompare(b, 'ko'))
+
+        setMajorCategories(uniqueMajorCategories)
+        setAllMiddleCategories(uniqueMiddleCategories)
+        setInstitutions(uniqueInstitutions)
       } catch (e) {
         // 메타데이터 로드 실패 시 무시
       }

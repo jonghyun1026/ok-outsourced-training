@@ -1,4 +1,5 @@
 export type OutsourcedTrainingRow = {
+  대분류: string | null
   기관명: string | null
   기관링크: string | null
   카테고리: string | null

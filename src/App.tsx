@@ -40,7 +40,8 @@ function App() {
 
   // 필터 상태
   const [query, setQuery] = useState('')
-  const [category, setCategory] = useState<string>('')
+  const [majorCategory, setMajorCategory] = useState<string>('') // 대분류
+  const [category, setCategory] = useState<string>('') // 중분류
   const [institution, setInstitution] = useState<string>('')
   const [monthFilter, setMonthFilter] = useState<string>('') // "2026-01" 형식
   const [costRange, setCostRange] = useState<string>('') // "min-max" 형식
@@ -50,7 +51,8 @@ function App() {
   const [filterExpanded, setFilterExpanded] = useState(true)
 
   // 데이터 상태
-  const [categories, setCategories] = useState<string[]>([])
+  const [majorCategories, setMajorCategories] = useState<string[]>([]) // 대분류 목록
+  const [allMiddleCategories, setAllMiddleCategories] = useState<Array<{ 대분류: string; 카테고리: string }>>([]) // 전체 중분류 목록
   const [institutions, setInstitutions] = useState<string[]>([])
   const [rows, setRows] = useState<OutsourcedTrainingRow[]>([])
   const [totalCount, setTotalCount] = useState<number | null>(null)
@@ -64,6 +66,15 @@ function App() {
       value: `2026-${String(i + 1).padStart(2, '0')}`,
     }))
   }, [])
+
+  // 대분류에 따른 중분류 필터링
+  const middleCategories = useMemo(() => {
+    if (!majorCategory) return allMiddleCategories.map((x) => x.카테고리)
+    return allMiddleCategories
+      .filter((x) => x.대분류 === majorCategory)
+      .map((x) => x.카테고리)
+      .sort((a, b) => a.localeCompare(b, 'ko'))
+  }, [majorCategory, allMiddleCategories])
 
   const offset = (page - 1) * PAGE_SIZE
   const pageCount = useMemo(() => {
@@ -91,12 +102,18 @@ function App() {
   const activeFiltersCount = useMemo(() => {
     let count = 0
     if (query) count++
+    if (majorCategory) count++
     if (category) count++
     if (institution) count++
     if (monthFilter) count++
     if (costRange) count++
     return count
-  }, [query, category, institution, monthFilter, costRange])
+  }, [query, majorCategory, category, institution, monthFilter, costRange])
+
+  // 대분류 변경 시 중분류 초기화
+  useEffect(() => {
+    setCategory('')
+  }, [majorCategory])
 
   // 비용 구간 라벨 가져오기
   const getCostRangeLabel = (range: string) => {
@@ -114,7 +131,7 @@ function App() {
 
   useEffect(() => {
     setPage(1)
-  }, [query, category, institution, monthFilter, costRange, sortBy, sortDir])
+  }, [query, majorCategory, category, institution, monthFilter, costRange, sortBy, sortDir])
 
   // 초기 메타데이터 로드
   useEffect(() => {
@@ -126,7 +143,7 @@ function App() {
       try {
         const { data, error: fetchError } = await supabase!
           .from('outsourced_training')
-          .select('카테고리, 기관명')
+          .select('대분류, 카테고리, 기관명')
           .limit(10000)
 
         if (cancelled) return
@@ -134,13 +151,29 @@ function App() {
         if (fetchError) return
 
         if (data && data.length > 0) {
-          const uniqueCategories = Array.from(
+          // 대분류 목록
+          const uniqueMajorCategories = Array.from(
             new Set(
               data
-                .map((x: any) => x.카테고리)
+                .map((x: any) => x.대분류)
                 .filter((x): x is string => Boolean(x && String(x).trim()))
             )
           ).sort((a, b) => a.localeCompare(b, 'ko'))
+
+          // 중분류 목록 (대분류와 함께)
+          const middleCategoriesWithMajor = data
+            .filter((x: any) => x.대분류 && x.카테고리)
+            .map((x: any) => ({
+              대분류: x.대분류,
+              카테고리: x.카테고리,
+            }))
+          
+          // 중복 제거 (대분류-카테고리 조합 기준)
+          const uniqueMiddleCategories = Array.from(
+            new Map(
+              middleCategoriesWithMajor.map((x) => [`${x.대분류}-${x.카테고리}`, x])
+            ).values()
+          )
 
           const uniqueInstitutions = Array.from(
             new Set(
@@ -150,7 +183,8 @@ function App() {
             )
           ).sort((a, b) => a.localeCompare(b, 'ko'))
 
-          setCategories(uniqueCategories)
+          setMajorCategories(uniqueMajorCategories)
+          setAllMiddleCategories(uniqueMiddleCategories)
           setInstitutions(uniqueInstitutions)
         }
       } catch (e) {
@@ -184,6 +218,7 @@ function App() {
         .order(sortBy, { ascending: sortDir === 'asc', nullsFirst: false })
         .range(from, to)
 
+      if (majorCategory) q = q.eq('대분류', majorCategory)
       if (category) q = q.eq('카테고리', category)
       if (institution) q = q.eq('기관명', institution)
       if (query.trim()) q = q.ilike('과정명', `%${query.trim()}%`)
@@ -232,7 +267,7 @@ function App() {
     return () => {
       cancelled = true
     }
-  }, [offset, category, institution, monthFilter, costRange, query, sortBy, sortDir])
+  }, [offset, majorCategory, category, institution, monthFilter, costRange, query, sortBy, sortDir])
 
   const hasEnv = envStatus.hasUrl && envStatus.hasAnonKey
 
@@ -247,6 +282,7 @@ function App() {
 
   const handleResetFilters = () => {
     setQuery('')
+    setMajorCategory('')
     setCategory('')
     setInstitution('')
     setMonthFilter('')
@@ -400,21 +436,42 @@ function App() {
                   />
                 </div>
 
-                {/* 카테고리 */}
+                {/* 대분류 */}
                 <div className="group">
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
                     <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
                     </svg>
-                    카테고리
+                    대분류
+                  </label>
+                  <select
+                    value={majorCategory}
+                    onChange={(e) => setMajorCategory(e.target.value)}
+                    className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-[#F26522] focus:border-transparent transition-all cursor-pointer group-hover:border-gray-400 dark:group-hover:border-gray-500"
+                  >
+                    <option value="">전체</option>
+                    {majorCategories.map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* 중분류 */}
+                <div className="group">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
+                    <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                    </svg>
+                    중분류
                   </label>
                   <select
                     value={category}
                     onChange={(e) => setCategory(e.target.value)}
                     className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-[#F26522] focus:border-transparent transition-all cursor-pointer group-hover:border-gray-400 dark:group-hover:border-gray-500"
+                    disabled={!majorCategory && middleCategories.length === 0}
                   >
                     <option value="">전체</option>
-                    {categories.map((c) => (
+                    {middleCategories.map((c) => (
                       <option key={c} value={c}>{c}</option>
                     ))}
                   </select>
@@ -507,12 +564,28 @@ function App() {
                           </button>
                         </span>
                       )}
+                      {majorCategory && (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-700">
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                          </svg>
+                          대분류: {majorCategory}
+                          <button
+                            onClick={() => setMajorCategory('')}
+                            className="ml-1 hover:text-indigo-900 dark:hover:text-indigo-100 transition-colors"
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </span>
+                      )}
                       {category && (
                         <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-700">
                           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
                           </svg>
-                          {category}
+                          중분류: {category}
                           <button
                             onClick={() => setCategory('')}
                             className="ml-1 hover:text-purple-900 dark:hover:text-purple-100 transition-colors"
@@ -606,11 +679,14 @@ function App() {
               <thead className="bg-[#5A4E4D] dark:bg-gray-700 text-white">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">
+                    대분류
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">
                     <button
                       onClick={() => handleSort('카테고리')}
                       className="flex items-center gap-2 hover:text-[#FCAF17] transition"
                     >
-                      카테고리
+                      중분류
                       {sortBy === '카테고리' && (
                         <span className="text-[#FCAF17]">
                           {sortDir === 'asc' ? '↑' : '↓'}
@@ -680,6 +756,9 @@ function App() {
                         <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-20" />
                       </td>
                       <td className="px-4 py-4">
+                        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-20" />
+                      </td>
+                      <td className="px-4 py-4">
                         <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-64 mb-2" />
                         <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-32" />
                       </td>
@@ -696,7 +775,7 @@ function App() {
                   ))
                 ) : rows.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-4 py-12 text-center text-gray-500 dark:text-gray-400">
+                    <td colSpan={6} className="px-4 py-12 text-center text-gray-500 dark:text-gray-400">
                       <div className="text-4xl mb-2">📭</div>
                       <div className="text-sm">표시할 데이터가 없습니다</div>
                     </td>
@@ -708,6 +787,11 @@ function App() {
                     const end = formatDateYYYYMMDD(r.종료일)
                     return (
                       <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">
+                        <td className="px-4 py-4">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-600 dark:bg-indigo-700 text-white">
+                            {r.대분류 ?? '-'}
+                          </span>
+                        </td>
                         <td className="px-4 py-4">
                           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#F26522] text-white">
                             {r.카테고리 ?? '-'}
@@ -780,9 +864,14 @@ function App() {
                 const end = formatDateYYYYMMDD(r.종료일)
                 return (
                   <div key={idx} className="p-4">
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#F26522] text-white mb-2">
-                      {r.카테고리 ?? '-'}
-                    </span>
+                    <div className="flex gap-2 mb-2">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-600 dark:bg-indigo-700 text-white">
+                        {r.대분류 ?? '-'}
+                      </span>
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#F26522] text-white">
+                        {r.카테고리 ?? '-'}
+                      </span>
+                    </div>
                     <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">
                       {r.과정명 ?? '-'}
                     </h3>

@@ -141,39 +141,39 @@ function App() {
 
     async function loadMetadata() {
       try {
-        // 대분류, 카테고리, 기관명을 개별적으로 모든 데이터 조회
-        // Supabase는 기본 1000건 제한이 있으므로 range로 충분한 범위 지정
-        const [majorCategoriesResult, categoriesResult, institutionsResult] = await Promise.all([
-          // 대분류 목록 (모든 데이터)
-          supabase!
+        const pageSize = 1000
+        let from = 0
+        const allRows: Array<{ 대분류: string | null; 카테고리: string | null; 기관명: string | null }> = []
+
+        while (true) {
+          const { data, error: fetchError } = await supabase!
             .from('outsourced_training')
-            .select('대분류')
-            .not('대분류', 'is', null)
-            .range(0, 9999),
-          
-          // 대분류-카테고리 조합 (모든 데이터)
-          supabase!
-            .from('outsourced_training')
-            .select('대분류, 카테고리')
-            .not('대분류', 'is', null)
-            .not('카테고리', 'is', null)
-            .range(0, 9999),
-          
-          // 기관명 목록 (모든 데이터)
-          supabase!
-            .from('outsourced_training')
-            .select('기관명')
-            .not('기관명', 'is', null)
-            .range(0, 9999),
-        ])
+            .select('대분류, 카테고리, 기관명')
+            .range(from, from + pageSize - 1)
+
+          if (fetchError) return
+          if (cancelled) return
+
+          const batch = (data ?? []) as unknown as Array<{
+            대분류: string | null
+            카테고리: string | null
+            기관명: string | null
+          }>
+          if (batch.length === 0) break
+
+          allRows.push(...batch)
+
+          if (batch.length < pageSize) break
+          from += pageSize
+        }
 
         if (cancelled) return
 
         // 대분류 중복 제거 및 정렬
         const uniqueMajorCategories = Array.from(
           new Set(
-            (majorCategoriesResult.data || [])
-              .map((x: any) => x.대분류)
+            allRows
+              .map((x) => x.대분류)
               .filter((x): x is string => Boolean(x && String(x).trim()))
           )
         ).sort((a, b) => a.localeCompare(b, 'ko'))
@@ -181,17 +181,17 @@ function App() {
         // 중분류 중복 제거 (대분류-카테고리 조합 기준)
         const uniqueMiddleCategories = Array.from(
           new Map(
-            (categoriesResult.data || [])
-              .filter((x: any) => x.대분류 && x.카테고리)
-              .map((x: any) => [`${x.대분류}-${x.카테고리}`, { 대분류: x.대분류, 카테고리: x.카테고리 }])
+            allRows
+              .filter((x) => x.대분류 && x.카테고리)
+              .map((x) => [`${x.대분류}-${x.카테고리}`, { 대분류: x.대분류!, 카테고리: x.카테고리! }])
           ).values()
         )
 
         // 기관명 중복 제거 및 정렬
         const uniqueInstitutions = Array.from(
           new Set(
-            (institutionsResult.data || [])
-              .map((x: any) => x.기관명)
+            allRows
+              .map((x) => x.기관명)
               .filter((x): x is string => Boolean(x && String(x).trim()))
           )
         ).sort((a, b) => a.localeCompare(b, 'ko'))

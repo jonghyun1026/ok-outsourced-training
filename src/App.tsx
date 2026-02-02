@@ -141,26 +141,30 @@ function App() {
 
     async function loadMetadata() {
       try {
-        // 대분류, 카테고리, 기관명을 개별적으로 DISTINCT 쿼리
+        // 대분류, 카테고리, 기관명을 개별적으로 모든 데이터 조회
+        // Supabase는 기본 1000건 제한이 있으므로 range로 충분한 범위 지정
         const [majorCategoriesResult, categoriesResult, institutionsResult] = await Promise.all([
-          // 대분류 목록
+          // 대분류 목록 (모든 데이터)
           supabase!
             .from('outsourced_training')
             .select('대분류')
-            .not('대분류', 'is', null),
+            .not('대분류', 'is', null)
+            .range(0, 9999),
           
-          // 대분류-카테고리 조합
+          // 대분류-카테고리 조합 (모든 데이터)
           supabase!
             .from('outsourced_training')
             .select('대분류, 카테고리')
             .not('대분류', 'is', null)
-            .not('카테고리', 'is', null),
+            .not('카테고리', 'is', null)
+            .range(0, 9999),
           
-          // 기관명 목록
+          // 기관명 목록 (모든 데이터)
           supabase!
             .from('outsourced_training')
             .select('기관명')
-            .not('기관명', 'is', null),
+            .not('기관명', 'is', null)
+            .range(0, 9999),
         ])
 
         if (cancelled) return

@@ -800,7 +800,7 @@ function App() {
                     return (
                       <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">
                         <td className="px-4 py-4">
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-600 dark:bg-indigo-700 text-white">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-600 dark:bg-gray-700 text-white">
                             {r.대분류 ?? '-'}
                           </span>
                         </td>
@@ -877,7 +877,7 @@ function App() {
                 return (
                   <div key={idx} className="p-4">
                     <div className="flex gap-2 mb-2">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-600 dark:bg-indigo-700 text-white">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-600 dark:bg-gray-700 text-white">
                         {r.대분류 ?? '-'}
                       </span>
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#F26522] text-white">
